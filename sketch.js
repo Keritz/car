@@ -20,6 +20,7 @@ function setup() {
   car = new Car(startPosition);
 }
 
+
 function draw() {
   background(220);
 
