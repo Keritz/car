@@ -101,9 +101,8 @@ function draw() {
     }
     endShape(CLOSE);
   }
-  
 
-
+  // Update and display car
   car.update();
   car.display();
 }
@@ -117,6 +116,7 @@ class Car {
     this.maxSpeed = 3;
     this.angle = 0;
     this.steeringAngle = 0;
+
     this.maxSteeringAngle = PI / 6; // 30 degrees
     this.wheelBase = 70;
     this.size = createVector(13, 7); // Size of the car
@@ -158,9 +158,17 @@ class Car {
 
     // Update position
     this.position.add(this.velocity);
+
+    // Prevent car from entering polygons
+    for (let i = 0; i < polygons.length; i++) {
+      let polygon = polygons[i];
+      if (this.checkCollisionWithPolygon(polygon)) {
+        // If collision detected, move car outside polygon
+        let closestPoint = this.getClosestPointOnPolygon(polygon);
+        this.position = closestPoint.copy();
+      }
+    }
   }
-  
-  
 
   display() {
     push();
@@ -171,4 +179,104 @@ class Car {
     rect(0, 0, this.size.x, this.size.y);
     pop();
   }
+
+  // Function to check collision with a polygon
+  checkCollisionWithPolygon(polygon) {
+    // Check if the car's position is inside the polygon
+    let point = this.position;
+    return this.pointInPolygon(point, polygon);
+  }
+
+  // Function to check if a point is inside a polygon
+  pointInPolygon(point, polygon) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      let xi = polygon[i].x, yi = polygon[i].y;
+      let xj = polygon[j].x, yj = polygon[j].y;
+      let intersect = ((yi > point.y) != (yj > point.y)) &&
+                      (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Function to get closest point on polygon to the car
+  getClosestPointOnPolygon(polygon) {
+    let closestDist = Infinity;
+    let closestPoint = null;
+
+    for (let i = 0; i < polygon.length; i++) {
+      let v1 = createVector(polygon[i].x, polygon[i].y);
+      let v2 = createVector(polygon[(i + 1) % polygon.length].x, polygon[(i + 1) % polygon.length].y);
+      let edge = p5.Vector.sub(v2, v1);
+      let fromV1toPoint = p5.Vector.sub(this.position, v1);
+      let projectionLength = fromV1toPoint.dot(edge) / edge.magSq();
+      let closest;
+
+      if (projectionLength <= 0) {
+        closest = v1;
+      } else if (projectionLength >= 1) {
+        closest = v2;
+      } else {
+        let projection = edge.copy().mult(projectionLength);
+        closest = p5.Vector.add(v1, projection);
+      }
+
+      let distance = p5.Vector.dist(this.position, closest);
+      if (distance < closestDist) {
+        closestDist = distance;
+        closestPoint = closest;
+      }
+    }
+
+    return closestPoint;
+  }
+}
+
+function preload() {
+  backgroundImage = loadImage('map-01.png'); // Load your background image
+}
+
+function setup() {
+  createCanvas(1000, 700);
+  cameraOffset = createVector(width / 2, height / 2); // Camera offset to center the car
+
+  // Calculate the scaled width and height of the background image
+  scaledWidth = backgroundImage.width * 1.3;
+  scaledHeight = backgroundImage.height * 1.3;
+
+  // Initialize the car at a specified position on the background image
+  let startPosition = createVector(380 * 1.3, 3550 * 1.3); // Set the initial position to x=380, y=3550, scaled by 1.3
+  car = new Car(startPosition);
+}
+
+function draw() {
+  background(100);
+
+  // Limit the car's position to within the bounds of the background image
+  car.position.x = constrain(car.position.x, 0, scaledWidth);
+  car.position.y = constrain(car.position.y, 0, scaledHeight);
+
+  // Translate the canvas to follow the car, but limit it to the background boundaries
+  let translateX = constrain(cameraOffset.x - car.position.x, width - scaledWidth, 0);
+  let translateY = constrain(cameraOffset.y - car.position.y, height - scaledHeight, 0);
+  translate(translateX, translateY);
+
+  // Draw background image, scaled to 1.3x
+  image(backgroundImage, 0, 0, scaledWidth, scaledHeight);
+
+  // Draw polygons
+  for (let i = 0; i < polygons.length; i++) {
+    let polygon = polygons[i];
+    beginShape();
+    fill(255, 0, 0, 100); // Light red with transparency
+    for (let j = 0; j < polygon.length; j++) {
+      vertex(polygon[j].x, polygon[j].y);
+    }
+    endShape(CLOSE);
+  }
+
+  // Update and display car
+  car.update();
+  car.display();
 }
