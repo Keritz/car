@@ -75,8 +75,8 @@ function setup() {
   car = new Car(startPosition);
 }
 
-
-function draw() {
+ 
+function draw()  {
   background(100);
 
   // Limit the car's position to within the bounds of the background image
